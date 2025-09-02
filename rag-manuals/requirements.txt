@@ -1,0 +1,43 @@
+# Core dependencies for RAG text ingestion pipeline
+# =====================================================
+
+# PDF Processing Libraries (choose one or more)
+# ----------------------------------------------
+# Primary recommendation - best balance of features and reliability
+pdfplumber>=0.10.0
+
+# Alternative PDF libraries (optional, for fallback support)
+PyPDF2>=3.0.1
+pymupdf>=1.23.0  # Also known as fitz
+
+# Text Processing
+# ---------------
+# For advanced text cleaning and normalization
+regex>=2023.10.3
+
+# Utilities
+# ---------
+# Enhanced collections and data structures
+collections-extended>=2.0.2
+
+# Optional: Advanced text processing
+# ----------------------------------
+# For more sophisticated text cleaning (optional)
+# ftfy>=6.1.1  # Fix text encoding issues
+# unidecode>=1.3.7  # ASCII transliterations
+
+# Development and Testing (optional)
+# -----------------------------------
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
+# black>=23.9.1
+# flake8>=6.1.0
+# mypy>=1.6.0
+
+# Logging and Monitoring (optional)
+# ----------------------------------
+# structlog>=23.2.0  # Better structured logging
+
+# Performance (optional)
+# -----------------------
+# numba>=0.58.0  # JIT compilation for performance-critical functions
