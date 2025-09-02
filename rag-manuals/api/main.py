@@ -15,12 +15,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, validator
 import httpx
 
-from ..ingestion.pdf_to_text import extract_pages, validate_pdf_file, get_pdf_info
-from ..ingestion.chunker import chunk_page, validate_chunks
-from ..ingestion.cleaner import clean_pages_batch
-from ..embeddings.embedder import Embedder
-from ..index.faiss_utils import FaissStore
-from .prompt_templates import QUERY_SYSTEM, format_retrieved_snippets
+from ingestion.pdf_to_text import extract_pages, validate_pdf_file, get_pdf_info
+from ingestion.chunker import chunk_page, validate_chunks
+from ingestion.cleaner import clean_pages_batch
+from embeddings.embedder import Embedder
+from index.faiss_utils import FaissStore
 
 # Configure logging
 logging.basicConfig(
