@@ -105,7 +105,7 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # React dev server
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:8501"],  # React dev server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -585,43 +585,55 @@ def format_file_size(size_bytes: int) -> str:
 
 
 async def generate_answer_http(query: str, snippets: str) -> Dict[str, Any]:
-    """Generate answer using HTTP LLM service."""
+    """Generate answer using Ollama HTTP API."""
     if not llm_client:
         raise RuntimeError("HTTP client not initialized")
     
     prompt = f"{QUERY_SYSTEM}\n\nQuery: {query}\n\nSnippets:\n{snippets}"
     
+    # Ollama API format
     payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 512,
+        "model": LLM_MODEL_NAME,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
             "temperature": 0.1,
-            "do_sample": True,
-            "return_full_text": False
+            "top_p": 0.9,
+            "num_predict": 512
         }
     }
     
-    response = await llm_client.post(
-        f"{LLM_API_URL}/generate",
-        json=payload,
-        timeout=30.0
-    )
-    
-    if response.status_code != 200:
-        raise RuntimeError(f"LLM service returned {response.status_code}: {response.text}")
-    
-    result = response.json()
-    generated_text = result.get("generated_text", "")
-    
-    # Try to parse JSON response from LLM
     try:
-        return json.loads(generated_text)
-    except json.JSONDecodeError:
-        # Fallback to simple text response
+        response = await llm_client.post(
+            f"{LLM_API_URL}/api/generate",
+            json=payload,
+            timeout=120.0  # Longer timeout for Ollama
+        )
+        
+        if response.status_code != 200:
+            raise RuntimeError(f"Ollama service returned {response.status_code}: {response.text}")
+        
+        result = response.json()
+        generated_text = result.get("response", "")
+        
+        # Try to parse JSON response from LLM
+        try:
+            return json.loads(generated_text)
+        except json.JSONDecodeError:
+            # Fallback to simple text response
+            return {
+                "answer": generated_text,
+                "citations": [],
+                "llm_confidence": 50
+            }
+            
+    except Exception as e:
+        logger.error(f"Ollama request failed: {e}")
+        # Fallback response
         return {
-            "answer": generated_text,
+            "answer": "I encountered an error connecting to the language model. Please try again later.",
             "citations": [],
-            "llm_confidence": 50
+            "llm_confidence": 0
         }
 
 
