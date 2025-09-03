@@ -20,7 +20,7 @@ from ingestion.chunker import chunk_page, validate_chunks
 from ingestion.cleaner import clean_pages_batch
 from embeddings.embedder import Embedder
 from index.faiss_utils import FaissStore
-from api.prompt_templates import QUERY_SYSTEM, format_retrieved_snippets
+from api.prompt_templates import QUERY_SYSTEM, build_answer_prompt, format_retrieved_snippets
 
 # Configure logging
 logging.basicConfig(
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # Configuration from environment variables
 LLM_BACKEND = os.environ.get("LLM_BACKEND", "local")
 LLM_API_URL = os.environ.get("LLM_API_URL", "http://localhost:8080")
-LLM_MODEL_NAME = os.environ.get("LLM_MODEL_NAME", "mistral-7b")
+LLM_MODEL_NAME = os.environ.get("LLM_MODEL_NAME", "llama2")
 MAX_FILE_SIZE = int(os.environ.get("MAX_FILE_SIZE", 50 * 1024 * 1024))  # 50MB default
 INDEX_PATH = os.environ.get("INDEX_PATH", "index/faiss.index")
 META_PATH = os.environ.get("META_PATH", "index/meta.jsonl")
@@ -337,6 +337,108 @@ async def health_check():
             status="unhealthy",
             services={"error": f"Health check failed: {str(e)}"},
             version="1.0.0"
+        )
+from api.llm_client import query_llm 
+import numpy as np
+@app.post("/query", response_model=QueryResponse)
+async def query_knowledge_base(request: QueryRequest):
+    """Query the knowledge base with comprehensive error handling."""
+    import time
+    start_time = time.time()
+    errors = []
+
+    try:
+        # Validate services
+        validate_services()
+
+        logger.info(f"Processing query: {request.q[:100]}...")
+
+        # Load index if needed
+        if store.index is None:
+            if not store.load():
+                return QueryResponse(
+                    success=False,
+                    answer="No knowledge base found. Please ingest documents first.",
+                    citations=[],
+                    confidence=0.0,
+                    snippets=[],
+                    errors=["Index not available"]
+                )
+
+        # Embed query
+        query_embedding = embedder.embed([request.q])[0]
+
+        # Search FAISS
+        results = store.search(np.array(query_embedding).reshape(1, -1), top_k=request.top_k)
+
+        if request.min_score and request.min_score > 0:
+            results = [(score, meta) for score, meta in results if score >= request.min_score]
+
+        if not results:
+            return QueryResponse(
+                success=True,
+                answer="I don’t know based on the manuals. No relevant info found.",
+                citations=[],
+                confidence=0.0,
+                snippets=[],
+                query_time=time.time() - start_time,
+                retrieval_stats={"total_retrieved": 0, "min_score": 0.0, "max_score": 0.0, "avg_score": 0.0}
+            )
+
+        # Format snippets
+        formatted_snippets = format_retrieved_snippets(results)
+
+        # Call LLM for refinement
+        if LLM_BACKEND == "http":
+            answer_data = await generate_answer_http(request.q, formatted_snippets)
+        else:
+            answer_data = generate_answer_local(request.q, formatted_snippets)
+
+        # Build response
+        snippets_data = []
+        citations = []
+        for i, (score, meta) in enumerate(results, 1):
+            sid = f"S{i}"
+            citations.append(sid)
+            snippets_data.append({
+                "id": sid,
+                "text": meta.get("text", ""),
+                "source": meta.get("source", "unknown"),
+                "page": meta.get("page", "?"),
+                "score": float(score),
+                "chunk_id": meta.get("id", ""),
+                "chunk_index": meta.get("chunk_index", "?")
+            })
+
+        scores = [s for s, _ in results]
+        retrieval_stats = {
+            "total_retrieved": len(results),
+            "min_score": float(min(scores)),
+            "max_score": float(max(scores)),
+            "avg_score": float(sum(scores) / len(scores))
+        }
+
+        return QueryResponse(
+            success=True,
+            answer=answer_data.get("answer", "No answer generated"),
+            citations=answer_data.get("citations", citations),
+            confidence=float(answer_data.get("llm_confidence", 50)),
+            snippets=snippets_data,
+            query_time=time.time() - start_time,
+            retrieval_stats=retrieval_stats,
+            errors=errors if errors else None
+        )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in query: {e}")
+        return QueryResponse(
+            success=False,
+            answer="Internal server error during query",
+            citations=[],
+            confidence=0.0,
+            snippets=[],
+            query_time=time.time() - start_time,
+            errors=[str(e)]
         )
 
 
