@@ -16,7 +16,7 @@ services:
       - EMBEDDING_MODEL=all-MiniLM-L6-v2
       - INDEX_PATH=/data/faiss.index
       - META_PATH=/data/meta.jsonl
-      - API_SECRET_KEY=${API_SECRET_KEY:-change-this-in-production}
+      - API_SECRET_KEY=vCcDG9UavmZWcO6LFQxpX8epdVYPI_TDwK65vG7PnLY
       - LOG_LEVEL=INFO
       - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8501
     volumes:
@@ -33,7 +33,7 @@ services:
       - ollama-data:/root/.ollama
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
-      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - HUGGING_FACE_HUB_TOKEN=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
     restart: unless-stopped
 
 volumes:
