@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
-import QueryForm from "./components/Queryform";
+import QueryForm from "./components/QueryForm";
 import ResultPanel from "./components/ResultPanel";
 import IngestPanel from "./components/IngestPanel";
-import Rightbar from "./components/Rightbar";
+import Rightbar from "./components/RightBar";
 import Footer from "./components/Footer";
 import { getHealth, getStats, postQuery, postIngest } from "./api";
 import { normalizeConfidence } from "./utils";
