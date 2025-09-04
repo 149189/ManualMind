@@ -1,0 +1,13 @@
+node_modules
+build
+dist
+.dockerignore
+Dockerfile
+nginx.conf
+.git
+.gitignore
+.env
+.vscode
+.idea
+README.md
+*.log

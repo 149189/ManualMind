@@ -36,6 +36,23 @@ services:
       - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
     restart: unless-stopped
 
+  manualmind-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time arg used by the Dockerfile to bake API base into the static build.
+        # This should be the URL your browser will use to reach the backend (usually http://localhost:8000).
+        REACT_APP_API_BASE_URL: "http://localhost:8000"
+    ports:
+      - "8080:80"
+    environment:
+      # runtime env var (for clarity). Note: static builds read the build-time variable.
+      - REACT_APP_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - manualmind-backend
+    restart: unless-stopped
+
 volumes:
   manualmind-data:
     driver: local
